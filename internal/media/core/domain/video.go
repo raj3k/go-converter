@@ -1,9 +1,12 @@
 package domain
 
-import "time"
+import (
+	"github.com/google/uuid"
+	"time"
+)
 
 type Video struct {
-	ID           string    `json:"id"`
+	ID           uuid.UUID `json:"id"`
 	Title        string    `json:"title"`
 	GridFSFileID string    `json:"grid_fs_file_id"`
 	UploadDate   time.Time `json:"upload_date"`
