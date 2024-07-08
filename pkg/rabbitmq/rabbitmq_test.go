@@ -7,9 +7,9 @@ import (
 )
 
 func TestNewRabbitMQConn(t *testing.T) {
-	rabbitMQURL := "amqp://guest:guest@localhost:5672"
+	rabbitmqCfg := rabbitmq.Config{URI: "amqp://guest:guest@localhost:5672"}
 
-	conn, err := rabbitmq.NewRabbitMQConn(rabbitMQURL)
+	conn, err := rabbitmq.NewRabbitMQConn(rabbitmqCfg)
 	if err != nil {
 		t.Fatalf("Failed to connect to RabbitMQ: %s", err)
 	}
