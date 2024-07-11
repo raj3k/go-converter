@@ -7,21 +7,19 @@ import (
 )
 
 type publisher struct {
-	log      *log.Logger
 	amqpConn *amqp.Connection
 	amqpChan *amqp.Channel
 }
 
 var _ EventPublisher = (*publisher)(nil)
 
-func NewPublisher(amqpConn *amqp.Connection, log *log.Logger) (*publisher, error) {
+func NewPublisher(amqpConn *amqp.Connection) (*publisher, error) {
 	channel, err := amqpConn.Channel()
 	if err != nil {
 		return nil, err
 	}
 
 	return &publisher{
-		log:      log,
 		amqpChan: channel,
 		amqpConn: amqpConn,
 	}, nil
@@ -40,8 +38,8 @@ func (p *publisher) Publish(ctx context.Context, exchangeName, bidingKey string,
 		ctx,
 		exchangeName,
 		bidingKey,
-		true,
-		true,
+		false,
+		false,
 		msg,
 	); err != nil {
 		return err
