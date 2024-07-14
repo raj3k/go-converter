@@ -13,7 +13,7 @@ type publisher struct {
 
 var _ EventPublisher = (*publisher)(nil)
 
-func NewPublisher(amqpConn *amqp.Connection) (*publisher, error) {
+func NewPublisher(amqpConn *amqp.Connection) (EventPublisher, error) {
 	channel, err := amqpConn.Channel()
 	if err != nil {
 		return nil, err
