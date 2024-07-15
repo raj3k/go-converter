@@ -7,7 +7,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/gridfs"
 	"os"
-	"time"
 )
 
 type gridFS struct {
@@ -48,8 +47,6 @@ func (g gridFS) UploadFile(filePath, fileName string) error {
 		return err
 	}
 	defer uploadStream.Close()
-
-	time.Sleep(5 * time.Second)
 
 	_, err = uploadStream.Write(data)
 	if err != nil {
