@@ -7,6 +7,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/gridfs"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"os"
 )
 
@@ -14,6 +15,18 @@ type gridFS struct {
 	client *mongo.Client
 	db     *mongo.Database
 	bucket *gridfs.Bucket
+}
+
+type UploadOptions struct {
+	Metadata bson.M
+}
+
+func (opts *UploadOptions) toGridFSUploadOptions() *options.UploadOptions {
+	gridFSUploadOpts := options.GridFSUpload()
+	if opts.Metadata != nil {
+		gridFSUploadOpts.SetMetadata(opts.Metadata)
+	}
+	return gridFSUploadOpts
 }
 
 var _ GridFS = (*gridFS)(nil)
@@ -37,13 +50,20 @@ func NewGridFSBucket(ctx context.Context, config mongodb.Config) (GridFS, error)
 	}, nil
 }
 
-func (g gridFS) UploadFile(filePath, fileName string) error {
+func (g *gridFS) UploadFile(filePath, fileName string, fileID interface{}, uploadOpts ...*UploadOptions) error {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return err
 	}
 
-	uploadStream, err := g.bucket.OpenUploadStream(fileName)
+	// TODO: parse options
+	var gridFSUploadOpts options.UploadOptions
+
+	if uploadOpts != nil {
+		gridFSUploadOpts = uploadOpts[0].toGridFSUploadOptions()
+	}
+
+	uploadStream, err := g.bucket.OpenUploadStreamWithID(fileID, fileName, gridFSUploadOpts)
 	if err != nil {
 		return err
 	}
@@ -57,10 +77,10 @@ func (g gridFS) UploadFile(filePath, fileName string) error {
 	return nil
 }
 
-func (g gridFS) DownloadFile(fileName, destPath string) error {
+func (g *gridFS) DownloadFile(destPath string, fileID interface{}) error {
 	var buf bytes.Buffer
 
-	_, err := g.bucket.DownloadToStreamByName(fileName, &buf)
+	_, err := g.bucket.DownloadToStream(fileID, &buf)
 	if err != nil {
 		return err
 	}
@@ -73,17 +93,49 @@ func (g gridFS) DownloadFile(fileName, destPath string) error {
 	return nil
 }
 
-func (g gridFS) DeleteFile(fileName string) error {
-	//TODO implement me
-	panic("implement me")
+func (g *gridFS) DeleteFile(fileName string) error {
+	var fileDoc bson.M
+	err := g.db.Collection("fs.files").FindOne(context.Background(), bson.M{"filename": fileName}).Decode(&fileDoc)
+	if err != nil {
+		return err
+	}
+	fileID := fileDoc["_id"]
+
+	_, err = g.db.Collection("fs.chunks").DeleteMany(context.Background(), bson.M{"files_id": fileID})
+	if err != nil {
+		return err
+	}
+
+	_, err = g.db.Collection("fs.files").DeleteOne(context.Background(), bson.M{"_id": fileID})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (g gridFS) ListFiles() ([]bson.M, error) {
-	//TODO implement me
-	panic("implement me")
+func (g *gridFS) ListFiles() ([]bson.M, error) {
+	cursor, err := g.db.Collection("fs.files").Find(context.Background(), bson.D{})
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(context.Background())
+
+	var files []bson.M
+	for cursor.Next(context.Background()) {
+		var file bson.M
+		if err := cursor.Decode(&file); err != nil {
+			return nil, err
+		}
+		files = append(files, file)
+	}
+	if err := cursor.Err(); err != nil {
+		return nil, err
+	}
+
+	return files, nil
 }
 
-func (g gridFS) Close() error {
-	//TODO implement me
-	panic("implement me")
+func (g *gridFS) Close() error {
+	return g.client.Disconnect(context.Background())
 }
