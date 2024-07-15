@@ -1,6 +1,7 @@
 package gridfs
 
 import (
+	"bytes"
 	"context"
 	"github.com/raj3k/go-converter/pkg/mongodb"
 	"go.mongodb.org/mongo-driver/bson"
@@ -57,8 +58,19 @@ func (g gridFS) UploadFile(filePath, fileName string) error {
 }
 
 func (g gridFS) DownloadFile(fileName, destPath string) error {
-	//TODO implement me
-	panic("implement me")
+	var buf bytes.Buffer
+
+	_, err := g.bucket.DownloadToStreamByName(fileName, &buf)
+	if err != nil {
+		return err
+	}
+
+	err = os.WriteFile(destPath, buf.Bytes(), 0644)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (g gridFS) DeleteFile(fileName string) error {
