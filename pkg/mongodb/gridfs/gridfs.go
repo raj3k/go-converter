@@ -6,13 +6,14 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/gridfs"
+	"os"
+	"time"
 )
 
 type gridFS struct {
 	client *mongo.Client
 	db     *mongo.Database
 	bucket *gridfs.Bucket
-	ctx    context.Context
 }
 
 var _ GridFS = (*gridFS)(nil)
@@ -33,13 +34,29 @@ func NewGridFSBucket(ctx context.Context, config mongodb.Config) (GridFS, error)
 		client: mongoConn,
 		db:     db,
 		bucket: bucket,
-		ctx:    ctx,
 	}, nil
 }
 
 func (g gridFS) UploadFile(filePath, fileName string) error {
-	//TODO implement me
-	panic("implement me")
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return err
+	}
+
+	uploadStream, err := g.bucket.OpenUploadStream(fileName)
+	if err != nil {
+		return err
+	}
+	defer uploadStream.Close()
+
+	time.Sleep(5 * time.Second)
+
+	_, err = uploadStream.Write(data)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (g gridFS) DownloadFile(fileName, destPath string) error {
