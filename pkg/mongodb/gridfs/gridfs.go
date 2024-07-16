@@ -29,6 +29,24 @@ func (opts *UploadOptions) toGridFSUploadOptions() *options.UploadOptions {
 	return gridFSUploadOpts
 }
 
+func parseUploadOptions(uploadOpts ...*UploadOptions) []*options.UploadOptions {
+	var opts []*options.UploadOptions
+
+	for _, uploadOpt := range uploadOpts {
+		if uploadOpt == nil {
+			continue
+		}
+
+		opt := options.UploadOptions{
+			Metadata: uploadOpt.Metadata,
+		}
+
+		opts = append(opts, &opt)
+	}
+
+	return opts
+}
+
 var _ GridFS = (*gridFS)(nil)
 
 func NewGridFSBucket(ctx context.Context, config mongodb.Config) (GridFS, error) {
@@ -56,14 +74,13 @@ func (g *gridFS) UploadFile(filePath, fileName string, fileID interface{}, uploa
 		return err
 	}
 
-	// TODO: parse options
-	var gridFSUploadOpts options.UploadOptions
+	var gridFSUploadOpts []*options.UploadOptions
 
 	if uploadOpts != nil {
-		gridFSUploadOpts = uploadOpts[0].toGridFSUploadOptions()
+		gridFSUploadOpts = parseUploadOptions(uploadOpts...)
 	}
 
-	uploadStream, err := g.bucket.OpenUploadStreamWithID(fileID, fileName, gridFSUploadOpts)
+	uploadStream, err := g.bucket.OpenUploadStreamWithID(fileID, fileName, gridFSUploadOpts...)
 	if err != nil {
 		return err
 	}
